@@ -1,6 +1,7 @@
 
 #include <stdio.h>
 #include <inttypes.h>
+#include <string.h>
 #include "sdkconfig.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -9,19 +10,34 @@
 #include "esp_log.h"
 //#include "driver/gpio.h"
 #include "led_strip.h"
+#include "driver/spi_master.h"
 
 
 
-//***  PINS ******
-#define PIN_LED_RGB 	8
-
+// Onboard RGB LED
+#define PIN_LED_RGB 	    8
 #define LED_RGB_RMT_CHANNEL 0
+
+// LED SPI I/F
+#define SPI_HOST        SPI2_HOST
+#define PIN_SPI_MOSI    2 //green
+#define PIN_SPI_CLK     3 //yellow
+#define SPI_NOT_USED   -1
+
+//Unused
+#define PIN_SPI_MISO    0
+#define PIN_SPI_CS      1
+
+
+
+
+
 
 static const char *TAG = "MAIN";
 
 
-static led_strip_t *pRGBled;
-
+led_strip_t          *pRGBled;
+spi_device_handle_t  spi;
 
 //LED Init
 static void LED_Init(void)
@@ -31,6 +47,56 @@ static void LED_Init(void)
     pRGBled->clear(pRGBled, 50);
 }
 
+
+//-----------------------------------------------
+static esp_err_t SPI_Master_Init(void)
+{
+    esp_err_t ret;
+
+    spi_bus_config_t buscfg={
+        .miso_io_num     = SPI_NOT_USED,
+        .mosi_io_num     = PIN_SPI_MOSI,
+        .sclk_io_num     = PIN_SPI_CLK,
+        .quadwp_io_num   = -1,
+        .quadhd_io_num   = -1,
+        .max_transfer_sz = 32
+    };
+
+    spi_device_interface_config_t devcfg={
+        .clock_speed_hz = 1000000,           //Clock out at 1 MHz
+        .mode           = 0,                 //SPI mode 0
+        .spics_io_num   = SPI_NOT_USED,      //CS pin
+        .queue_size     = 1                  //Queue 1 transaction
+    };
+
+    printf("INIT SPI START\n");
+
+
+    //Initialize the SPI bus
+    //ret=spi_bus_initialize(SPI_HOST, &buscfg, SPI_DMA_CH_AUTO);
+    ret=spi_bus_initialize(SPI_HOST, &buscfg, SPI_DMA_DISABLED);
+
+    ESP_ERROR_CHECK(ret);
+
+    //Attach the HOST to the SPI bus
+    ret=spi_bus_add_device(SPI_HOST, &devcfg, &spi);
+    ESP_ERROR_CHECK(ret);
+
+    printf("INIT SPI END\n");
+
+	return ret;
+}
+
+int32_t SPI_Write(const uint8_t *bufp, uint16_t len)
+{
+	spi_transaction_t t;
+
+	memset(&t, 0, sizeof(t));
+
+	t.length    = 8*len;
+	t.tx_buffer = bufp;
+	return spi_device_polling_transmit(spi, &t);
+}
 
 
 //Chip_Info
@@ -104,6 +170,7 @@ void app_main(void)
     Chip_Info();
 
     LED_Init();
+    SPI_Master_Init();
 
     //Delay
 	vTaskDelay(configTICK_RATE_HZ * 1);
@@ -134,6 +201,51 @@ void app_main(void)
     	}
         pRGBled->refresh(pRGBled, 100);
         s_rgb_state++;
+
+        {
+        	uint8_t i;
+        	uint8_t start[4] = { 0x00,0x00,0x00,0x00 };
+        	uint8_t end[4]   = { 0xFF,0xFF,0xFF,0xFF };
+
+        	uint8_t off[4]   = { 0xFF,0x00,0x00,0x00 };
+
+
+        	uint8_t dataA[4] = { 0xE3,0x7F,0x00,0x00 };
+        	uint8_t dataB[4] = { 0xE3,0x00,0x7F,0x00 };
+        	uint8_t dataC[4] = { 0xE3,0x00,0x00,0x7F };
+
+        	uint8_t dataD[4] = { 0xE3,0xFF,0x00,0x00 };
+        	uint8_t dataE[4] = { 0xE3,0x00,0xFF,0x00 };
+        	uint8_t dataF[4] = { 0xE3,0x00,0x00,0xFF };
+
+
+        	SPI_Write( start, 4);
+
+        	SPI_Write( dataA, 4);
+        	SPI_Write( dataB, 4);
+        	SPI_Write( dataC, 4);
+
+        	SPI_Write( dataD, 4);
+        	SPI_Write( dataE, 4);
+        	SPI_Write( dataF, 4);
+
+        	SPI_Write( dataA, 4);
+        	SPI_Write( dataB, 4);
+        	SPI_Write( dataC, 4);
+
+        	SPI_Write( dataA, 4);
+
+
+//        	//zero out remaining LEDs, i.e "off"
+//        	for(i=0; i<8;i++)
+//            	SPI_Write( off, 4);
+
+
+        	SPI_Write( end, 4);
+
+
+        }
+
 
 
     }	//END Infinite while
