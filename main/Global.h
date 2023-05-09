@@ -62,7 +62,7 @@
 /*
  * Display.c
  */
-
+extern void Display_Task( void *parameters );
 
 /*
  * LedSPI.c

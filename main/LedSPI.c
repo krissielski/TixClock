@@ -25,6 +25,8 @@ esp_err_t LedSPI_Init(void)
 {
     esp_err_t ret;
 
+	ESP_LOGI(TAG, "In LedSPI_Init");
+
     spi_bus_config_t buscfg={
         .miso_io_num     = SPI_NOT_USED,
         .mosi_io_num     = PIN_SPI_MOSI,
@@ -41,9 +43,6 @@ esp_err_t LedSPI_Init(void)
         .queue_size     = 1                  //Queue 1 transaction
     };
 
-    printf("INIT SPI START\n");
-
-
     //Initialize the SPI bus
     //ret=spi_bus_initialize(SPI_HOST, &buscfg, SPI_DMA_CH_AUTO);
     ret=spi_bus_initialize(SPI_HOST, &buscfg, SPI_DMA_DISABLED);
@@ -53,8 +52,6 @@ esp_err_t LedSPI_Init(void)
     //Attach the HOST to the SPI bus
     ret=spi_bus_add_device(SPI_HOST, &devcfg, &spi);
     ESP_ERROR_CHECK(ret);
-
-    printf("INIT SPI END\n");
 
 	return ret;
 }

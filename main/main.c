@@ -67,26 +67,7 @@ static void Chip_Info(void)
 }
 
 
-void Task1( void *parameters )
-{
-    printf("Task1 Start\n");
-	while(1)
-	{
-		vTaskDelay(configTICK_RATE_HZ * 2);
-		printf("1\n");
-	}
-}
 
-void Task2( void *parameters )
-{
-    printf("Task2 Start\n");
-
-	while(1)
-	{
-		vTaskDelay(configTICK_RATE_HZ * 2);
-		printf("2\n");
-	}
-}
 
 
 //*****************************
@@ -94,10 +75,9 @@ void Task2( void *parameters )
 //*****************************
 void app_main(void)
 {
-	static uint8_t s_rgb_state = 0;
+	static uint8_t      s_rgb_state = 0;
 
-	static TaskHandle_t hTask1;
-	static TaskHandle_t hTask2;
+	static TaskHandle_t hDisplayTask;
 
 
 	ESP_LOGI(TAG, "TixClock");
@@ -113,9 +93,8 @@ void app_main(void)
     //Delay
 	vTaskDelay(configTICK_RATE_HZ * 1);
 
-	//Create Tasks
-	xTaskCreate( Task1, "Task1", 1024, NULL, 10, &hTask1 );
-	xTaskCreate( Task2, "Task2", 1024, NULL,  9, &hTask2 );
+	//Create Tasks (higher number = higher priority)
+	xTaskCreate( Display_Task, "DisplayTask", 2048, NULL, 15, &hDisplayTask );
 
 
 	//Infinite Task Loop
@@ -139,52 +118,6 @@ void app_main(void)
     	}
         pRGBled->refresh(pRGBled, 100);
         s_rgb_state++;
-
-        {
-        	uint8_t i;
-        	uint8_t start[4] = { 0x00,0x00,0x00,0x00 };
-        	uint8_t end[4]   = { 0xFF,0xFF,0xFF,0xFF };
-
-        	uint8_t off[4]   = { 0xFF,0x00,0x00,0x00 };
-
-
-        	uint8_t dataA[4] = { 0xE3,0x7F,0x00,0x00 };
-        	uint8_t dataB[4] = { 0xE3,0x00,0x7F,0x00 };
-        	uint8_t dataC[4] = { 0xE3,0x00,0x00,0x7F };
-
-        	uint8_t dataD[4] = { 0xE3,0xFF,0x00,0x00 };
-        	uint8_t dataE[4] = { 0xE3,0x00,0xFF,0x00 };
-        	uint8_t dataF[4] = { 0xE3,0x00,0x00,0xFF };
-
-
-        	LedSPI_Write( start, 4);
-
-        	LedSPI_Write( dataA, 4);
-        	LedSPI_Write( dataB, 4);
-        	LedSPI_Write( dataC, 4);
-
-        	LedSPI_Write( dataD, 4);
-        	LedSPI_Write( dataE, 4);
-        	LedSPI_Write( dataF, 4);
-
-        	LedSPI_Write( dataA, 4);
-        	LedSPI_Write( dataB, 4);
-        	LedSPI_Write( dataC, 4);
-
-        	LedSPI_Write( dataA, 4);
-
-
-//        	//zero out remaining LEDs, i.e "off"
-//        	for(i=0; i<8;i++)
-//            	SPI_Write( off, 4);
-
-
-        	LedSPI_Write( end, 4);
-
-
-        }
-
-
 
     }	//END Infinite while
 
