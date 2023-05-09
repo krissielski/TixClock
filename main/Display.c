@@ -27,21 +27,24 @@ static uint8_t pattern[9];
 //The LIST
 pixel_t pixelList[] = {
 
-		{ &pattern[0], &cOff   },
+//		{ &pattern[0], &cOff   },
 
 		{ &pattern[0], &cGreen },
 		{ &pattern[0], &cGreen },
 
-		{ &pattern[0], &cBlue  },
-		{ &pattern[0], &cBlue  },
+		{ &pattern[1], &cBlue  },
+		{ &pattern[1], &cBlue  },
 
-		{ &pattern[0], &cRed   },
-		{ &pattern[0], &cRed   },
+		{ &pattern[2], &cRed   },
+		{ &pattern[2], &cRed   },
 
-		{ &pattern[0], &cRed   },
-		{ &pattern[0], &cRed   },
+		{ &pattern[3], &cGreen },
+		{ &pattern[3], &cGreen },
 
-		{ &pattern[0], &cOff   },
+		{ &pattern[4], &cBlue  },
+		{ &pattern[4], &cBlue  },
+
+//		{ &pattern[0], &cOff   },
 
 };
 
@@ -55,8 +58,8 @@ void Display_Init()
 {
 	ESP_LOGI(TAG, "In Display Init");
 
-	pattern[0] = 1;
-
+	for(int i =0; i<9; i++)
+		pattern[i] = 0;
 
 }
 
@@ -90,6 +93,8 @@ void Display_SendEndFrame(void)
 void Display_Task( void *parameters )
 {
 
+	static int off_pos = 0;
+
 	ESP_LOGI(TAG, "In Display Task");
 
 
@@ -101,12 +106,23 @@ void Display_Task( void *parameters )
     {
     	int i;
 
+
     	vTaskDelay(configTICK_RATE_HZ / 2);
 
 
     	//Process:
     	//  Get new time
+
+
     	//  Generate pattern/digits
+    	for(i=0; i<9; i++)
+    		pattern[i] = 1;
+
+    	pattern[off_pos] = 0;
+
+    	off_pos++;
+    	if( off_pos == 5) off_pos=0;
+
 
 
     	//  Write pattern to SPI Leds
@@ -114,7 +130,11 @@ void Display_Task( void *parameters )
 
 		for(i=0; i<PIXEL_LIST_SIZE; i++ )
 		{
-			Display_SendPixel( pixelList[i].color );
+			if( *pixelList[i].pixel > 0 )
+				Display_SendPixel( pixelList[i].color );
+			else
+				Display_SendPixel( &cOff );
+
 		}
 
 		Display_SendEndFrame();
